@@ -1,5 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import dns from 'dns';
+
+// Force IPv4-first on Windows to avoid ENOBUFS from dual-stack localhost resolution
+dns.setDefaultResultOrder('ipv4first');
 
 export default defineConfig({
   plugins: [react()],
