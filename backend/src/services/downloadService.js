@@ -48,8 +48,7 @@ async function downloadServerJar(srv, loader, mcVersion, build) {
     }
 
     case 'purpur': {
-      const { data } = await axios.get(`https://api.purpurmc.org/v2/purpur/${mcVersion}/latest`);
-      url = `https://api.purpurmc.org/v2/purpur/${mcVersion}/${data.build.build}/download`;
+      url = `https://api.purpurmc.org/v2/purpur/${mcVersion}/latest/download`;
       jarName = `purpur-${mcVersion}.jar`;
       break;
     }
@@ -76,14 +75,25 @@ async function downloadServerJar(srv, loader, mcVersion, build) {
     }
 
     case 'bedrock': {
-      // BDS download URL from the official page (Windows)
       const { data: pageHtml } = await axios.get(
         'https://www.minecraft.net/en-us/download/server/bedrock',
-        { headers: { 'User-Agent': 'Mozilla/5.0' } }
+        { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' } }
       );
-      const match = pageHtml.match(/https:\/\/minecraft\.azureedge\.net\/bin-win\/bedrock-server-[\d.]+\.zip/);
-      if (!match) throw new Error('Could not find Bedrock download URL');
-      url = match[0];
+      // Decode JSON-escaped quotes embedded in page JS blobs
+      const decoded = pageHtml.replace(/\\x22/g, '"').replace(/\\u0022/g, '"');
+      const bedrockPatterns = [
+        /https?:\/\/[^"'\s\\]+bedrock-server-[\d.]+\.zip/,
+        /"serverBedrockWindows"\s*:\s*"(https?:\/\/[^"]+\.zip)"/,
+        /https?:\/\/[^"'\s]+\/bin-win\/bedrock-server-[\d.]+\.zip/,
+        /https?:\/\/[^"'\s]+bedrock[^"'\s]+windows[^"'\s]+\.zip/i,
+      ];
+      let downloadUrl = null;
+      for (const pat of bedrockPatterns) {
+        const m = decoded.match(pat);
+        if (m) { downloadUrl = m[1] || m[0]; break; }
+      }
+      if (!downloadUrl) throw new Error('Could not find Bedrock download URL. Download manually from: https://www.minecraft.net/en-us/download/server/bedrock');
+      url = downloadUrl;
       jarName = 'bedrock-server.zip';
       break;
     }
