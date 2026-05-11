@@ -50,7 +50,7 @@ Before installing MCHost Manager, make sure you have:
 
 1. **Download or clone** this repository:
    ```
-   git clone https://github.com/YOUR_USERNAME/MCHost-Manager.git
+   git clone https://github.com/viperfighterpilot33066/MCHost-Manager.git
    cd MCHost-Manager
    ```
 
