@@ -52,24 +52,25 @@ export default function CreateServerModal({ onClose }) {
     setVersionList([]);
     try {
       let data;
+      let list = [];
       if (form.loader === 'paper') {
         data = await versionsApi.paper();
-        setVersionList(data.versions.slice(0, 30));
+        list = data.versions.slice(0, 50);
       } else if (form.loader === 'purpur') {
         data = await versionsApi.purpur();
-        setVersionList(data.versions.slice(0, 30));
+        list = data.versions.slice(0, 50);
       } else if (form.loader === 'vanilla') {
         data = await versionsApi.vanilla();
-        setVersionList(data.versions.map(v => v.id).slice(0, 30));
+        list = data.versions.map(v => v.id).slice(0, 50);
       } else if (form.loader === 'fabric') {
         data = await versionsApi.fabric();
-        setVersionList(data.versions.slice(0, 30));
+        list = data.versions.slice(0, 50);
       } else if (form.loader === 'bedrock') {
-        setVersionList(['latest']);
+        list = ['latest'];
       }
-      if (versionList.length > 0 && !form.version) {
-        set('version', versionList[0]);
-      }
+      setVersionList(list);
+      // Auto-select newest — use list directly since setState is async
+      if (list.length > 0) set('version', list[0]);
     } catch (err) {
       toast.error('Failed to fetch versions');
     }
@@ -271,8 +272,8 @@ export default function CreateServerModal({ onClose }) {
                     size={8}
                     style={{ height: 'auto' }}
                   >
-                    {versionList.map(v => (
-                      <option key={v} value={v}>{v}</option>
+                    {versionList.map((v, i) => (
+                      <option key={v} value={v}>{v}{i === 0 ? ' (Latest)' : ''}</option>
                     ))}
                   </select>
                 </div>

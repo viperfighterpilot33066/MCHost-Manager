@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { versions as versionsApi } from '../../api/client';
@@ -19,6 +19,11 @@ export default function VersionManager({ server }) {
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
+  // Auto-load versions for the current loader on mount
+  useEffect(() => {
+    fetchVersions(loader);
+  }, []);
+
   const fetchVersions = async (l) => {
     setLoading(true);
     setVersions([]);
@@ -30,7 +35,10 @@ export default function VersionManager({ server }) {
       else if (l === 'vanilla') data = (await versionsApi.vanilla()).versions.map(v => v.id);
       else if (l === 'fabric') data = (await versionsApi.fabric()).versions;
       else if (l === 'bedrock') data = ['latest'];
-      setVersions((data || []).slice(0, 40));
+      const list = (data || []).slice(0, 50);
+      setVersions(list);
+      // Auto-select the newest version (first in list, since backend sorts newest-first)
+      if (list.length > 0) setMcVersion(list[0]);
     } catch {
       toast.error('Failed to fetch versions');
     }
@@ -108,8 +116,9 @@ export default function VersionManager({ server }) {
                 size={6}
                 style={{ height: 'auto' }}
               >
-                <option value="">Select version...</option>
-                {versions.map(v => <option key={v} value={v}>{v}</option>)}
+                {versions.map((v, i) => (
+                  <option key={v} value={v}>{v}{i === 0 ? ' (Latest)' : ''}</option>
+                ))}
               </select>
             )}
           </div>
@@ -125,7 +134,7 @@ export default function VersionManager({ server }) {
           ) : downloaded ? (
             <><CheckCircle size={14} />Downloaded!</>
           ) : (
-            <><Download size={14} />Download {loader} {mcVersion || (loader === 'bedrock' ? 'BDS' : '')}</>
+            <><Download size={14} />Download {loader === 'bedrock' ? 'Bedrock Server' : `${loader} ${mcVersion}`}</>
           )}
         </button>
       </div>
