@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
+const unzipper = require('unzipper');
 const config = require('../config');
 
 async function downloadFile(url, dest, onProgress) {
@@ -96,14 +97,18 @@ async function downloadServerJar(srv, loader, mcVersion, build) {
 
   const destPath = path.join(srv.dir, jarName);
 
+  let lastLoggedPercent = -1;
   await downloadFile(url, destPath, ({ percent }) => {
-    if (percent % 10 === 0) srv._addLog(`[SYSTEM] Download progress: ${percent}%`);
+    const bucket = Math.floor(percent / 10) * 10;
+    if (bucket > lastLoggedPercent) {
+      lastLoggedPercent = bucket;
+      srv._addLog(`[SYSTEM] Download progress: ${bucket}%`);
+    }
   });
 
   // Handle bedrock zip extraction
   if (loader === 'bedrock') {
     srv._addLog('[SYSTEM] Extracting Bedrock server...');
-    const unzipper = require('unzipper');
     await fs.createReadStream(destPath)
       .pipe(unzipper.Extract({ path: srv.dir }))
       .promise();

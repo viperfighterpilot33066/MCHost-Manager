@@ -24,15 +24,16 @@ export default function Console({ serverId, ws, isRunning }) {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
   const inputRef = useRef(null);
-  const initialized = useRef(false);
-
-  // Initialize xterm
+  // Initialize xterm — re-runs when serverId changes so switching servers gets a fresh terminal
   useEffect(() => {
-    if (initialized.current || !containerRef.current) return;
-    initialized.current = true;
+    if (!containerRef.current) return;
+
+    let disposed = false;
 
     (async () => {
       const { Terminal, FitAddon, WebLinksAddon } = await getXterm();
+      if (disposed) return;
+
       const term = new Terminal({
         theme: {
           background: '#0a0e13',
@@ -86,12 +87,13 @@ export default function Console({ serverId, ws, isRunning }) {
     })();
 
     return () => {
+      disposed = true;
       termRef.current?.dispose();
       termRef.current = null;
       fitRef.current = null;
-      initialized.current = false;
+      historyRef.current = [];
     };
-  }, []);
+  }, [serverId]);
 
   // Resize observer
   useEffect(() => {

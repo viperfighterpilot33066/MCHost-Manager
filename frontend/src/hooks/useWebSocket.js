@@ -6,11 +6,18 @@ const WS_URL = `ws://${window.location.hostname}:3001/ws`;
 let globalWs = null;
 let reconnectTimer = null;
 const subscribers = new Map(); // type+serverId -> Set<callback>
+let serverListCallback = null;
 
 function subscribe(key, cb) {
   if (!subscribers.has(key)) subscribers.set(key, new Set());
   subscribers.get(key).add(cb);
-  return () => subscribers.get(key)?.delete(cb);
+  return () => {
+    const set = subscribers.get(key);
+    if (set) {
+      set.delete(cb);
+      if (set.size === 0) subscribers.delete(key);
+    }
+  };
 }
 
 function dispatch(key, data) {
@@ -18,6 +25,7 @@ function dispatch(key, data) {
 }
 
 function connectGlobal(onServerListUpdate) {
+  if (onServerListUpdate) serverListCallback = onServerListUpdate;
   if (globalWs && globalWs.readyState < 2) return;
 
   globalWs = new WebSocket(WS_URL);
@@ -26,10 +34,14 @@ function connectGlobal(onServerListUpdate) {
     console.log('WS connected');
     clearTimeout(reconnectTimer);
     // Re-subscribe to all active servers
+    const seen = new Set();
     subscribers.forEach((_, key) => {
       if (key.startsWith('server:')) {
         const serverId = key.replace('server:', '').split(':')[0];
-        globalWs.send(JSON.stringify({ type: 'subscribe', serverId }));
+        if (!seen.has(serverId)) {
+          seen.add(serverId);
+          globalWs.send(JSON.stringify({ type: 'subscribe', serverId }));
+        }
       }
     });
   };
@@ -40,13 +52,12 @@ function connectGlobal(onServerListUpdate) {
       const { type, serverId, data } = msg;
 
       if (type === 'server_list') {
-        onServerListUpdate?.(data);
+        serverListCallback?.(data);
         return;
       }
 
       if (serverId) {
         dispatch(`server:${serverId}:${type}`, data);
-        // Also dispatch to wildcard listeners
         dispatch(`server:${serverId}:*`, msg);
       }
     } catch (_) {}
@@ -54,7 +65,7 @@ function connectGlobal(onServerListUpdate) {
 
   globalWs.onclose = () => {
     console.log('WS disconnected, reconnecting in 3s...');
-    reconnectTimer = setTimeout(() => connectGlobal(onServerListUpdate), 3000);
+    reconnectTimer = setTimeout(() => connectGlobal(), 3000);
   };
 
   globalWs.onerror = () => {

@@ -56,12 +56,13 @@ export default function ServerDetail() {
   }
 
   const act = async (fn, label, optimistic) => {
+    const prev = optimistic ? { status: server.status } : null;
     if (optimistic) updateServer(id, optimistic);
     try {
       await fn();
     } catch (err) {
       toast.error(`${label} failed: ${err.response?.data?.error || err.message}`);
-      if (optimistic) updateServer(id, {}); // revert by re-fetching
+      if (prev) updateServer(id, prev);
     }
   };
 

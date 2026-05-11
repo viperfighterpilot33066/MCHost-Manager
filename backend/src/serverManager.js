@@ -70,13 +70,25 @@ class MinecraftServer extends EventEmitter {
   }
 
   toConfig() {
-    const json = this.toJSON();
-    delete json.status;
-    delete json.players;
-    delete json.stats;
-    delete json.pid;
-    delete json.startTime;
-    return json;
+    return {
+      id: this.id,
+      name: this.name,
+      type: this.type,
+      version: this.version,
+      loader: this.loader,
+      jarFile: this.jarFile,
+      port: this.port,
+      maxRam: this.maxRam,
+      minRam: this.minRam,
+      javaPath: this.javaPath,
+      javaArgs: this.javaArgs,
+      autoRestart: this.autoRestart,
+      autoRestartDelay: this.autoRestartDelay,
+      scheduledRestarts: this.scheduledRestarts,
+      geyser: this.geyser,
+      bedrockPort: this.bedrockPort,
+      description: this.description,
+    };
   }
 
   async start() {
@@ -189,27 +201,27 @@ class MinecraftServer extends EventEmitter {
   _handleLine(line) {
     this._addLog(line);
 
-    // Parse player join/leave
     const joinMatch = line.match(/(\w+) joined the game/);
-    const leaveMatch = line.match(/(\w+) left the game/);
-    const doneMatch = line.match(/Done \([\d.]+s\)!/i);
-    const listMatch = line.match(/There are \d+ of a max of \d+ players online: (.*)/);
-
     if (joinMatch && !this.players.includes(joinMatch[1])) {
       this.players.push(joinMatch[1]);
       this.emit('players', { players: this.players });
+      return;
     }
 
+    const leaveMatch = line.match(/(\w+) left the game/);
     if (leaveMatch) {
       this.players = this.players.filter(p => p !== leaveMatch[1]);
       this.emit('players', { players: this.players });
+      return;
     }
 
-    if (doneMatch && this.status === 'starting') {
+    if (/Done \([\d.]+s\)!/i.test(line) && this.status === 'starting') {
       this.status = 'running';
       this.emit('status', { status: 'running' });
+      return;
     }
 
+    const listMatch = line.match(/There are \d+ of a max of \d+ players online: (.*)/);
     if (listMatch) {
       const names = listMatch[1].trim();
       this.players = names ? names.split(', ').map(n => n.trim()).filter(Boolean) : [];

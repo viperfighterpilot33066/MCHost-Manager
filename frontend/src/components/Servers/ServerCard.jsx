@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Square, RotateCcw, Users, Cpu, MemoryStick } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,7 +15,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function ServerCard({ server }) {
+function ServerCard({ server }) {
   const navigate = useNavigate();
   const updateServer = useStore(s => s.updateServer);
 
@@ -120,3 +121,5 @@ export default function ServerCard({ server }) {
     </div>
   );
 }
+
+export default memo(ServerCard);

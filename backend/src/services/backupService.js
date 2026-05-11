@@ -13,20 +13,17 @@ async function listBackups(serverId) {
   const dir = backupDir(serverId);
   if (!await fs.pathExists(dir)) return [];
 
-  const files = await fs.readdir(dir);
-  const backups = [];
-
-  for (const file of files) {
-    if (!file.endsWith('.zip')) continue;
+  const files = (await fs.readdir(dir)).filter(f => f.endsWith('.zip'));
+  const backups = await Promise.all(files.map(async (file) => {
     const full = path.join(dir, file);
     const stat = await fs.stat(full);
-    backups.push({
+    return {
       id: file.replace('.zip', ''),
       filename: file,
       size: stat.size,
       createdAt: stat.mtime.toISOString(),
-    });
-  }
+    };
+  }));
 
   return backups.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
@@ -76,10 +73,7 @@ async function restoreBackup(serverId, backupId, serverDir) {
 
   // Clear world directories (keep server jar and configs)
   const worldDirs = ['world', 'world_nether', 'world_the_end'];
-  for (const w of worldDirs) {
-    const wPath = path.join(serverDir, w);
-    if (await fs.pathExists(wPath)) await fs.remove(wPath);
-  }
+  await Promise.all(worldDirs.map(w => fs.remove(path.join(serverDir, w))));
 
   // Extract backup
   await fs.createReadStream(zipPath)
@@ -90,7 +84,6 @@ async function restoreBackup(serverId, backupId, serverDir) {
 async function deleteBackup(serverId, backupId) {
   const dir = backupDir(serverId);
   const zipPath = path.join(dir, `${backupId}.zip`);
-  if (!await fs.pathExists(zipPath)) throw new Error('Backup not found');
   await fs.remove(zipPath);
 }
 
