@@ -21,9 +21,12 @@ if %ERRORLEVEL% NEQ 0 (
 for /f "tokens=*" %%v in ('node -v') do set NODE_VER=%%v
 echo Node.js: %NODE_VER%
 
-:: Check for Java (warn only — Bedrock servers don't need it)
+:: Check for Java using a flag variable (avoids goto-inside-block batch bug)
+set JAVA_OK=0
 where java >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+if %ERRORLEVEL% EQU 0 set JAVA_OK=1
+
+if %JAVA_OK% EQU 0 (
   echo.
   echo [WARNING] Java not found in PATH.
   echo   Java servers will fail to start.

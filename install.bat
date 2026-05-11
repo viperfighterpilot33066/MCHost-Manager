@@ -24,9 +24,12 @@ echo Node.js: %NODE_VER%
 echo npm:     %NPM_VER%
 echo.
 
-:: Check for Java
+:: Check for Java using a flag variable (avoids goto-inside-block batch bug)
+set JAVA_OK=0
 where java >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+if %ERRORLEVEL% EQU 0 set JAVA_OK=1
+
+if %JAVA_OK% EQU 0 (
   echo [WARNING] Java is NOT installed or not in PATH.
   echo   Java is required to run Minecraft Java Edition servers.
   echo.
@@ -44,13 +47,8 @@ if %ERRORLEVEL% NEQ 0 (
   )
   echo  Java installed successfully.
   echo  NOTE: You may need to restart your PC before starting servers.
-) else (
-  for /f "tokens=*" %%v in ('java -version 2^>^&1') do (
-    echo Java:    %%v
-    goto :java_done
-  )
-  :java_done
 )
+if %JAVA_OK% EQU 1 echo Java:    found
 echo.
 
 echo [1/2] Installing backend dependencies...
