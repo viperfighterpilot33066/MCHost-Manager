@@ -24,6 +24,35 @@ echo Node.js: %NODE_VER%
 echo npm:     %NPM_VER%
 echo.
 
+:: Check for Java
+where java >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  echo [WARNING] Java is NOT installed or not in PATH.
+  echo   Java is required to run Minecraft Java Edition servers.
+  echo.
+  echo Installing Java 21 via winget...
+  winget install --id EclipseAdoptium.Temurin.21.JDK -e --silent --accept-package-agreements --accept-source-agreements
+  if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [!] Automatic install failed. Please install Java manually:
+    echo     https://adoptium.net/
+    echo     Download Temurin 21 LTS and run the installer.
+    echo     Then re-run this script.
+    echo.
+    pause
+    exit /b 1
+  )
+  echo  Java installed successfully.
+  echo  NOTE: You may need to restart your PC before starting servers.
+) else (
+  for /f "tokens=*" %%v in ('java -version 2^>^&1') do (
+    echo Java:    %%v
+    goto :java_done
+  )
+  :java_done
+)
+echo.
+
 echo [1/2] Installing backend dependencies...
 cd /d "%~dp0backend"
 call npm install

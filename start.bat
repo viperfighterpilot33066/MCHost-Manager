@@ -20,6 +20,16 @@ if %ERRORLEVEL% NEQ 0 (
 
 for /f "tokens=*" %%v in ('node -v') do set NODE_VER=%%v
 echo Node.js: %NODE_VER%
+
+:: Check for Java (warn only — Bedrock servers don't need it)
+where java >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  echo.
+  echo [WARNING] Java not found in PATH.
+  echo   Java servers will fail to start.
+  echo   Run install.bat to install Java automatically,
+  echo   or download from: https://adoptium.net/
+)
 echo.
 
 :: Install dependencies if node_modules missing
