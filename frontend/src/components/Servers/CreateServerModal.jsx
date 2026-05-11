@@ -25,11 +25,15 @@ export default function CreateServerModal({ onClose }) {
     loader: 'paper',
     version: '',
     port: '25565',
+    bedrockPort: '19132',
     maxRam: '2G',
     minRam: '512M',
     description: '',
     autoRestart: false,
+    autoRestartDelay: '10',
+    javaArgs: '',
   });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [versionList, setVersionList] = useState([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
@@ -80,6 +84,9 @@ export default function CreateServerModal({ onClose }) {
         ...form,
         type: form.loader === 'bedrock' ? 'bedrock' : 'java',
         port: parseInt(form.port) || 25565,
+        bedrockPort: parseInt(form.bedrockPort) || 19132,
+        autoRestartDelay: parseInt(form.autoRestartDelay) || 10,
+        javaArgs: form.javaArgs.trim(),
       };
       const srv = await serversApi.create(payload);
       addServer(srv);
@@ -181,6 +188,61 @@ export default function CreateServerModal({ onClose }) {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {form.autoRestart && (
+                <div className="form-group">
+                  <label className="form-label">Restart Delay (seconds)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={form.autoRestartDelay}
+                    onChange={e => set('autoRestartDelay', e.target.value)}
+                    min="0" max="300"
+                    style={{ maxWidth: 160 }}
+                  />
+                  <div className="form-hint">Wait this many seconds before restarting after a crash</div>
+                </div>
+              )}
+
+              {form.loader === 'bedrock' && (
+                <div className="form-group">
+                  <label className="form-label">Bedrock Port (UDP)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={form.bedrockPort}
+                    onChange={e => set('bedrockPort', e.target.value)}
+                    min="1" max="65535"
+                    style={{ maxWidth: 160 }}
+                  />
+                  <div className="form-hint">Default Bedrock port is 19132</div>
+                </div>
+              )}
+
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ fontSize: 12, marginBottom: showAdvanced ? 10 : 0 }}
+                  onClick={() => setShowAdvanced(s => !s)}
+                >
+                  {showAdvanced ? '▲ Hide' : '▼ Show'} Advanced (JVM flags)
+                </button>
+                {showAdvanced && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Custom Java Flags</label>
+                    <textarea
+                      className="form-input"
+                      rows={3}
+                      style={{ fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
+                      placeholder="-XX:+UseG1GC -XX:G1HeapRegionSize=4M -XX:+ParallelRefProcEnabled"
+                      value={form.javaArgs}
+                      onChange={e => set('javaArgs', e.target.value)}
+                    />
+                    <div className="form-hint">Space-separated JVM arguments added before -jar. Leave blank for defaults.</div>
+                  </div>
+                )}
               </div>
             </>
           )}

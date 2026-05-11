@@ -5,6 +5,7 @@ const http = require('http');
 const path = require('path');
 const { ServerManager } = require('./serverManager');
 const { initScheduler } = require('./services/schedulerService');
+const { router: authRouter, bearerAuth } = require('./routes/auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,11 +17,18 @@ app.locals.serverManager = serverManager;
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
+// Auth routes (no bearer required)
+app.use('/api/auth', authRouter);
+
+// All other API routes require bearer token if password is set
+app.use('/api', bearerAuth);
+
 // Routes
 app.use('/api/servers', require('./routes/servers'));
 app.use('/api/plugins', require('./routes/plugins'));
 app.use('/api/backups', require('./routes/backups'));
 app.use('/api/versions', require('./routes/versions'));
+app.use('/api/network', require('./routes/network'));
 
 // Health check
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: Date.now() }));

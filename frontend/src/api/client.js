@@ -2,6 +2,31 @@ import axios from 'axios';
 
 const api = axios.create({ baseURL: '/api' });
 
+// Attach JWT token to every request if present
+api.interceptors.request.use((cfg) => {
+  const token = localStorage.getItem('mchost_token');
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  return cfg;
+});
+
+// Redirect to login on 401
+api.interceptors.response.use(
+  r => r,
+  err => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('mchost_token');
+      window.location.reload();
+    }
+    return Promise.reject(err);
+  }
+);
+
+export const auth = {
+  status: () => api.get('/auth/status').then(r => r.data),
+  login: (password) => api.post('/auth/login', { password }).then(r => r.data),
+  logout: () => { localStorage.removeItem('mchost_token'); window.location.reload(); },
+};
+
 export const servers = {
   list: () => api.get('/servers').then(r => r.data),
   get: (id) => api.get(`/servers/${id}`).then(r => r.data),
@@ -23,6 +48,11 @@ export const servers = {
   deletePlugin: (id, filename) => api.delete(`/servers/${id}/plugins/${encodeURIComponent(filename)}`).then(r => r.data),
   installPlugin: (id, url, filename) => api.post(`/servers/${id}/plugins/install`, { url, filename }).then(r => r.data),
   setupCrossplay: (id) => api.post(`/servers/${id}/setup-crossplay`).then(r => r.data),
+  openFirewall: (id) => api.post(`/servers/${id}/firewall`).then(r => r.data),
+};
+
+export const network = {
+  info: () => api.get('/network/info').then(r => r.data),
 };
 
 export const backups = {

@@ -15,9 +15,11 @@ import BackupManager from '../Backups/BackupManager';
 import PlayerManager from '../Players/PlayerManager';
 import PropertiesEditor from '../Settings/PropertiesEditor';
 import VersionManager from './VersionManager';
+import ConnectionInfo from '../Connect/ConnectionInfo';
 
 const TABS = [
   { id: 'console', label: 'Console', icon: Terminal },
+  { id: 'connect', label: 'Connect', icon: Users },
   { id: 'stats', label: 'Monitoring', icon: BarChart2 },
   { id: 'plugins', label: 'Plugins', icon: Package },
   { id: 'players', label: 'Players', icon: Users },
@@ -165,6 +167,11 @@ export default function ServerDetail() {
         {activeTab === 'console' && (
           <div className="tab-content console-tab">
             <Console serverId={id} ws={ws} isRunning={isRunning} />
+          </div>
+        )}
+        {activeTab === 'connect' && (
+          <div className="tab-content">
+            <ConnectionInfo server={server} />
           </div>
         )}
         {activeTab === 'stats' && (

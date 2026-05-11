@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs-extra');
 const axios = require('axios');
+const { exec } = require('child_process');
 const router = express.Router();
 const { downloadFile } = require('../services/downloadService');
 const config = require('../config');
@@ -173,6 +174,34 @@ router.post('/:id/plugins/install', async (req, res) => {
     res.json({ ok: true, filename });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Open Windows Firewall for game ports (TCP Java + UDP Bedrock)
+router.post('/:id/firewall', async (req, res) => {
+  const srv = mgr(req).getServer(req.params.id);
+  if (!srv) return res.status(404).json({ error: 'Server not found' });
+
+  if (process.platform !== 'win32') {
+    return res.status(400).json({ error: 'Firewall automation is only supported on Windows. Add the rules manually on your OS.' });
+  }
+
+  const ruleName = `MCHost-${srv.name.replace(/[^a-zA-Z0-9 _-]/g, '')}`;
+
+  const addRule = (proto, port) => new Promise((resolve, reject) => {
+    const cmd = `netsh advfirewall firewall add rule name="${ruleName}-${proto}" dir=in action=allow protocol=${proto} localport=${port}`;
+    exec(cmd, (err, _, stderr) => {
+      if (err) reject(new Error(stderr || err.message));
+      else resolve();
+    });
+  });
+
+  try {
+    await addRule('TCP', srv.port);
+    if (srv.geyser) await addRule('UDP', srv.bedrockPort || 19132);
+    res.json({ ok: true, message: `Firewall rules added for port ${srv.port}${srv.geyser ? ` and UDP ${srv.bedrockPort || 19132}` : ''}` });
+  } catch (err) {
+    res.status(500).json({ error: `Firewall rule failed: ${err.message}. Try running MCHost as Administrator.` });
   }
 });
 

@@ -518,3 +518,17 @@ body { overflow: hidden; height: 100vh; }
 }
 .toggle input:checked + .toggle-slider { background: var(--primary); }
 .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+/* ===== Login Page ===== */
+.login-page {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; background: var(--bg);
+}
+.login-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 40px; width: 100%; max-width: 380px; text-align: center;
+}
+.login-card h1 { font-size: 22px; margin-bottom: 4px; }
+.login-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+.login-card .form-group { text-align: left; }
+.login-error { margin-top: 10px; font-size: 12px; color: var(--danger); }

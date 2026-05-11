@@ -1,5 +1,63 @@
 import { useEffect, useRef, useState } from 'react';
-import { Terminal as TerminalIcon, Trash2 } from 'lucide-react';
+import { Terminal as TerminalIcon, Trash2, HelpCircle, X } from 'lucide-react';
+
+const COMMAND_HELP = [
+  {
+    category: 'Player Management',
+    commands: [
+      { cmd: 'op <player>', desc: 'Give operator status' },
+      { cmd: 'deop <player>', desc: 'Remove operator status' },
+      { cmd: 'kick <player> [reason]', desc: 'Kick a player' },
+      { cmd: 'ban <player> [reason]', desc: 'Ban a player' },
+      { cmd: 'pardon <player>', desc: 'Unban a player' },
+      { cmd: 'ban-ip <ip>', desc: 'Ban an IP address' },
+      { cmd: 'whitelist add <player>', desc: 'Add to whitelist' },
+      { cmd: 'whitelist remove <player>', desc: 'Remove from whitelist' },
+      { cmd: 'whitelist list', desc: 'Show whitelisted players' },
+      { cmd: 'whitelist on / off', desc: 'Enable or disable whitelist' },
+    ],
+  },
+  {
+    category: 'World & Gameplay',
+    commands: [
+      { cmd: 'time set day', desc: 'Set time to day' },
+      { cmd: 'time set night', desc: 'Set time to night' },
+      { cmd: 'weather clear', desc: 'Clear weather' },
+      { cmd: 'weather rain', desc: 'Start rain' },
+      { cmd: 'tp <player1> <player2>', desc: 'Teleport player to player' },
+      { cmd: 'give <player> <item> [count]', desc: 'Give item to player' },
+      { cmd: 'gamemode <mode> [player]', desc: 'survival / creative / adventure / spectator' },
+      { cmd: 'difficulty <level>', desc: 'peaceful / easy / normal / hard' },
+      { cmd: 'gamerule <rule> <value>', desc: 'Change a game rule' },
+      { cmd: 'fill <x1 y1 z1> <x2 y2 z2> <block>', desc: 'Fill area with blocks' },
+    ],
+  },
+  {
+    category: 'Server Management',
+    commands: [
+      { cmd: 'list', desc: 'Show online players' },
+      { cmd: 'say <message>', desc: 'Broadcast message to all' },
+      { cmd: 'save-all', desc: 'Force save the world' },
+      { cmd: 'save-off / save-on', desc: 'Disable / enable auto-save' },
+      { cmd: 'reload', desc: 'Reload datapacks' },
+      { cmd: 'stop', desc: 'Stop the server gracefully' },
+      { cmd: 'seed', desc: 'Show world seed' },
+      { cmd: 'defaultgamemode <mode>', desc: 'Set default gamemode for new players' },
+      { cmd: 'scoreboard', desc: 'Manage scoreboards' },
+    ],
+  },
+  {
+    category: 'Paper / Performance',
+    commands: [
+      { cmd: 'tps', desc: 'Show server TPS (Paper only)' },
+      { cmd: 'gc', desc: 'Run garbage collection (Paper)' },
+      { cmd: 'timings report', desc: 'Generate timing report (Paper)' },
+      { cmd: 'chunky start', desc: 'Pre-generate chunks (Chunky plugin)' },
+      { cmd: 'pl', desc: 'List installed plugins' },
+      { cmd: 'version', desc: 'Show server version' },
+    ],
+  },
+];
 
 // Dynamic import for xterm to avoid SSR issues
 let termLib = null;
@@ -24,6 +82,7 @@ export default function Console({ serverId, ws, isRunning }) {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
   const inputRef = useRef(null);
+  const [showHelp, setShowHelp] = useState(false);
   // Initialize xterm — re-runs when serverId changes so switching servers gets a fresh terminal
   useEffect(() => {
     if (!containerRef.current) return;
@@ -192,10 +251,48 @@ export default function Console({ serverId, ws, isRunning }) {
           <TerminalIcon size={12} />
           <span>Console</span>
         </div>
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={clearConsole} title="Clear console">
-          <Trash2 size={12} />
-        </button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button
+            className={`btn btn-icon btn-sm ${showHelp ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setShowHelp(h => !h)}
+            title="Command reference"
+          >
+            {showHelp ? <X size={12} /> : <HelpCircle size={12} />}
+          </button>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={clearConsole} title="Clear console">
+            <Trash2 size={12} />
+          </button>
+        </div>
       </div>
+
+      {/* Command help panel */}
+      {showHelp && (
+        <div style={{ overflowY: 'auto', maxHeight: 240, background: '#0d1117', borderBottom: '1px solid var(--border)', padding: '10px 12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {COMMAND_HELP.map(group => (
+              <div key={group.category}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {group.category}
+                </div>
+                {group.commands.map(({ cmd, desc }) => (
+                  <div
+                    key={cmd}
+                    onClick={() => { setCommand(cmd.split(' ')[0] + ' '); inputRef.current?.focus(); }}
+                    style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0', cursor: 'pointer', borderRadius: 3 }}
+                    title="Click to prefill"
+                  >
+                    <code style={{ fontSize: 11, color: 'var(--success)', whiteSpace: 'nowrap', flexShrink: 0 }}>{cmd}</code>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+            Click any command to prefill · ↑↓ arrow keys for history · /help in-game for full list
+          </div>
+        </div>
+      )}
 
       <div className="console-output" ref={containerRef} />
 
@@ -207,7 +304,7 @@ export default function Console({ serverId, ws, isRunning }) {
           value={command}
           onChange={e => setCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isRunning ? 'Send command...' : 'Server is not running'}
+          placeholder={isRunning ? 'Send command... (? for help)' : 'Server is not running'}
           disabled={!isRunning}
           spellCheck={false}
           autoComplete="off"

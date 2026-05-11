@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Save, RefreshCw } from 'lucide-react';
+import { Save, RefreshCw, Plus, Trash2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { servers as serversApi } from '../../api/client';
+import useStore from '../../store/useStore';
 
 const PROPERTY_GROUPS = [
   {
@@ -50,6 +51,37 @@ const PROPERTY_GROUPS = [
       { key: 'entity-broadcast-range-percentage', label: 'Entity Broadcast Range %', type: 'number' },
     ],
   },
+  {
+    title: 'Access & Security',
+    keys: [
+      { key: 'spawn-protection', label: 'Spawn Protection Radius', type: 'number', hint: '0 to disable' },
+      { key: 'enforce-whitelist', label: 'Enforce Whitelist (kick unlisted on reload)', type: 'boolean' },
+      { key: 'player-idle-timeout', label: 'Idle Timeout (minutes)', type: 'number', hint: '0 to disable' },
+      { key: 'op-permission-level', label: 'OP Permission Level', type: 'select', options: ['1', '2', '3', '4'] },
+      { key: 'function-permission-level', label: 'Function Permission Level', type: 'select', options: ['1', '2', '3', '4'] },
+      { key: 'force-gamemode', label: 'Force Gamemode on Join', type: 'boolean' },
+      { key: 'broadcast-console-to-ops', label: 'Broadcast Console to OPs', type: 'boolean' },
+    ],
+  },
+  {
+    title: 'Resource Pack',
+    keys: [
+      { key: 'resource-pack', label: 'Resource Pack URL', type: 'text', hint: 'Direct download URL (.zip)' },
+      { key: 'resource-pack-sha1', label: 'Resource Pack SHA-1', type: 'text', hint: 'Optional hash for verification' },
+      { key: 'resource-pack-prompt', label: 'Prompt Message', type: 'text', hint: 'Shown when player is asked to accept' },
+      { key: 'require-resource-pack', label: 'Require Resource Pack', type: 'boolean' },
+    ],
+  },
+  {
+    title: 'Remote Access (RCON)',
+    keys: [
+      { key: 'enable-rcon', label: 'Enable RCON', type: 'boolean' },
+      { key: 'rcon.port', label: 'RCON Port', type: 'number', hint: 'Default: 25575' },
+      { key: 'rcon.password', label: 'RCON Password', type: 'password' },
+      { key: 'enable-query', label: 'Enable Query (GameSpy4)', type: 'boolean' },
+      { key: 'query.port', label: 'Query Port', type: 'number', hint: 'Default: 25565' },
+    ],
+  },
 ];
 
 function PropertyField({ propDef, value, onChange }) {
@@ -96,11 +128,141 @@ function PropertyField({ propDef, value, onChange }) {
       <label className="form-label">{label}</label>
       <input
         className="form-input"
-        type={type === 'number' ? 'number' : 'text'}
+        type={type === 'number' ? 'number' : type === 'password' ? 'password' : 'text'}
         value={value || ''}
         onChange={e => onChange(key, e.target.value)}
       />
       {hint && <div className="form-hint">{hint}</div>}
+    </div>
+  );
+}
+
+const SCHEDULE_PRESETS = [
+  { label: 'Daily 4 AM', cron: '0 4 * * *' },
+  { label: 'Every 6 hours', cron: '0 */6 * * *' },
+  { label: 'Every 12 hours', cron: '0 */12 * * *' },
+  { label: 'Weekly (Sun 4 AM)', cron: '0 4 * * 0' },
+  { label: 'Custom', cron: '' },
+];
+
+const TIMEZONES = [
+  'UTC', 'America/New_York', 'America/Chicago', 'America/Denver',
+  'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+  'Asia/Tokyo', 'Asia/Shanghai', 'Australia/Sydney',
+];
+
+function ScheduleManager({ server }) {
+  const updateServer = useStore(s => s.updateServer);
+  const [schedules, setSchedules] = useState(server.scheduledRestarts || []);
+  const [saving, setSaving] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newSched, setNewSched] = useState({ preset: 0, cron: SCHEDULE_PRESETS[0].cron, timezone: 'UTC', enabled: true });
+
+  const saveSchedules = async (list) => {
+    setSaving(true);
+    try {
+      await serversApi.update(server.id, { scheduledRestarts: list });
+      updateServer(server.id, { scheduledRestarts: list });
+      toast.success('Schedules saved');
+    } catch (err) {
+      toast.error('Save failed: ' + (err.response?.data?.error || err.message));
+    }
+    setSaving(false);
+  };
+
+  const toggleSchedule = (i) => {
+    const next = schedules.map((s, idx) => idx === i ? { ...s, enabled: !s.enabled } : s);
+    setSchedules(next);
+    saveSchedules(next);
+  };
+
+  const deleteSchedule = (i) => {
+    const next = schedules.filter((_, idx) => idx !== i);
+    setSchedules(next);
+    saveSchedules(next);
+  };
+
+  const addSchedule = () => {
+    const cron = newSched.preset < SCHEDULE_PRESETS.length - 1
+      ? SCHEDULE_PRESETS[newSched.preset].cron
+      : newSched.cron.trim();
+    if (!cron) return toast.error('Enter a cron expression');
+    const next = [...schedules, { cron, timezone: newSched.timezone, enabled: newSched.enabled }];
+    setSchedules(next);
+    saveSchedules(next);
+    setShowAdd(false);
+    setNewSched({ preset: 0, cron: SCHEDULE_PRESETS[0].cron, timezone: 'UTC', enabled: true });
+  };
+
+  const handlePresetChange = (idx) => {
+    const preset = SCHEDULE_PRESETS[parseInt(idx)];
+    setNewSched(n => ({ ...n, preset: parseInt(idx), cron: preset?.cron || '' }));
+  };
+
+  return (
+    <div className="props-group">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div className="props-group-title" style={{ margin: 0 }}>Scheduled Restarts</div>
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowAdd(s => !s)}>
+          <Plus size={12} />{showAdd ? 'Cancel' : 'Add Schedule'}
+        </button>
+      </div>
+
+      {schedules.length === 0 && !showAdd && (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
+          No schedules configured. Add one to auto-restart the server.
+        </div>
+      )}
+
+      {schedules.map((s, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--surface)', borderRadius: 6, marginBottom: 6 }}>
+          <Clock size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <code style={{ fontSize: 12, color: 'var(--primary)' }}>{s.cron}</code>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>{s.timezone || 'UTC'}</span>
+          </div>
+          <label className="toggle" style={{ flexShrink: 0 }}>
+            <input type="checkbox" checked={s.enabled} onChange={() => toggleSchedule(i)} />
+            <span className="toggle-slider" />
+          </label>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => deleteSchedule(i)} title="Delete">
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ))}
+
+      {showAdd && (
+        <div style={{ background: 'var(--surface)', borderRadius: 6, padding: 14, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Preset</label>
+            <select className="form-select" value={newSched.preset} onChange={e => handlePresetChange(e.target.value)}>
+              {SCHEDULE_PRESETS.map((p, i) => <option key={i} value={i}>{p.label}</option>)}
+            </select>
+          </div>
+          {newSched.preset === SCHEDULE_PRESETS.length - 1 && (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Cron Expression</label>
+              <input
+                className="form-input"
+                style={{ fontFamily: 'monospace' }}
+                placeholder="0 4 * * *"
+                value={newSched.cron}
+                onChange={e => setNewSched(n => ({ ...n, cron: e.target.value }))}
+              />
+              <div className="form-hint">minute hour day month weekday — e.g. <code>0 4 * * *</code> = 4 AM daily</div>
+            </div>
+          )}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Timezone</label>
+            <select className="form-select" value={newSched.timezone} onChange={e => setNewSched(n => ({ ...n, timezone: e.target.value }))}>
+              {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={addSchedule} disabled={saving}>
+            {saving ? 'Saving...' : <><Plus size={12} />Add Schedule</>}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -209,7 +371,7 @@ export default function PropertiesEditor({ server }) {
               <div className="props-group-title">{group.title}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 {group.keys.map(propDef => (
-                  <div key={propDef.key} style={propDef.type === 'text' && propDef.key === 'motd' ? { gridColumn: '1 / -1' } : {}}>
+                  <div key={propDef.key} style={propDef.type === 'text' && (propDef.key === 'motd' || propDef.key === 'resource-pack' || propDef.key === 'resource-pack-prompt') ? { gridColumn: '1 / -1' } : {}}>
                     <PropertyField
                       propDef={propDef}
                       value={props[propDef.key] ?? ''}
@@ -252,6 +414,8 @@ export default function PropertiesEditor({ server }) {
           {saving ? <><div className="spinner" style={{ width: 14, height: 14 }} />Saving...</> : <><Save size={14} />Save Properties</>}
         </button>
       </div>
+
+      <ScheduleManager server={server} />
     </div>
   );
 }
