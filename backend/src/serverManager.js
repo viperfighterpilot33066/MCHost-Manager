@@ -18,7 +18,10 @@ class MinecraftServer extends EventEmitter {
     this.maxRam = cfg.maxRam || '2G';
     this.minRam = cfg.minRam || '512M';
     this.javaPath = cfg.javaPath || config.DEFAULT_JAVA_PATH;
-    this.javaArgs = cfg.javaArgs || [];
+    const rawArgs = cfg.javaArgs || [];
+    this.javaArgs = Array.isArray(rawArgs)
+      ? rawArgs
+      : (rawArgs.trim() ? rawArgs.trim().split(/\s+/) : []);
     this.autoRestart = cfg.autoRestart || false;
     this.autoRestartDelay = cfg.autoRestartDelay || 10;
     this.scheduledRestarts = cfg.scheduledRestarts || [];
@@ -156,7 +159,7 @@ class MinecraftServer extends EventEmitter {
       'nogui',
     ];
 
-    this._spawnProcess(this.javaPath, args);
+    await this._spawnProcess(this.javaPath, args);
   }
 
   async _startBedrock() {
@@ -181,7 +184,7 @@ class MinecraftServer extends EventEmitter {
       env.LD_LIBRARY_PATH = '.';
     }
 
-    this._spawnProcess(exePath, [], { env });
+    await this._spawnProcess(exePath, [], { env });
   }
 
   _spawnProcess(cmd, args, extraOptions = {}) {
@@ -192,20 +195,12 @@ class MinecraftServer extends EventEmitter {
       ...extraOptions,
     });
 
-    this.pid = this.process.pid;
-    this.startTime = new Date().toISOString();
-
     this.process.stdout.on('data', (data) => {
       data.toString().split('\n').filter(l => l.trim()).forEach(l => this._handleLine(l));
     });
 
     this.process.stderr.on('data', (data) => {
       data.toString().split('\n').filter(l => l.trim()).forEach(l => this._handleLine(l));
-    });
-
-    this.process.on('error', (err) => {
-      this._addLog(`[SYSTEM] Process error: ${err.message}`);
-      this._cleanup('stopped');
     });
 
     this.process.on('close', (code, signal) => {
@@ -224,6 +219,26 @@ class MinecraftServer extends EventEmitter {
     });
 
     this._startStats();
+
+    // spawn() sets pid synchronously if the OS accepted the launch.
+    // If pid is undefined the executable wasn't found — reject so start() can
+    // surface the error as a toast instead of silently going to 'stopped'.
+    return new Promise((resolve, reject) => {
+      if (this.process.pid !== undefined) {
+        this.pid = this.process.pid;
+        this.startTime = new Date().toISOString();
+        this.process.on('error', (err) => {
+          this._addLog(`[SYSTEM] Process error: ${err.message}`);
+          this._cleanup('stopped');
+        });
+        resolve();
+      } else {
+        this.process.once('error', (err) => {
+          this._cleanup('stopped');
+          reject(new Error(`Failed to start: ${err.message}. Is Java installed? Run install.bat or install Java 21 manually.`));
+        });
+      }
+    });
   }
 
   _handleLine(line) {
