@@ -33,13 +33,13 @@ if %JAVA_OK% EQU 0 (
   echo [WARNING] Java is NOT installed or not in PATH.
   echo   Java is required to run Minecraft Java Edition servers.
   echo.
-  echo Installing Java 21 via winget...
-  winget install --id EclipseAdoptium.Temurin.21.JDK -e --silent --accept-package-agreements --accept-source-agreements
+  echo Installing Java 25 via winget...
+  winget install --id EclipseAdoptium.Temurin.25.JDK -e --silent --accept-package-agreements --accept-source-agreements
   if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [!] Automatic install failed. Please install Java manually:
     echo     https://adoptium.net/
-    echo     Download Temurin 21 LTS and run the installer.
+    echo     Download Temurin 25 LTS and run the installer.
     echo     Then re-run this script.
     echo.
     pause
