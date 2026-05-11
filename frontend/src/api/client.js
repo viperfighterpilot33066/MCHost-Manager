@@ -22,6 +22,7 @@ export const servers = {
   getPlugins: (id) => api.get(`/servers/${id}/plugins`).then(r => r.data),
   deletePlugin: (id, filename) => api.delete(`/servers/${id}/plugins/${encodeURIComponent(filename)}`).then(r => r.data),
   installPlugin: (id, url, filename) => api.post(`/servers/${id}/plugins/install`, { url, filename }).then(r => r.data),
+  setupCrossplay: (id) => api.post(`/servers/${id}/setup-crossplay`).then(r => r.data),
 };
 
 export const backups = {

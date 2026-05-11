@@ -19,7 +19,7 @@ A full-featured, self-hosted **Minecraft server manager** with a polished dark w
 | **Player Manager** | See who's online; OP, DEOP, kick, ban, whitelist players with one click |
 | **Server Properties** | Friendly form UI for `server.properties` — no manual file editing needed |
 | **Version Switcher** | Download **Paper, Purpur, Vanilla, Fabric,** or **Bedrock** JARs automatically |
-| **GeyserMC Support** | Info panel + plugin install for cross-platform Java ↔ Bedrock play |
+| **Java + Bedrock Crossplay** | One-click GeyserMC + Floodgate setup — Bedrock/mobile/console players join your Java server automatically |
 | **Dark UI** | GitHub-dark color scheme, responsive layout, native-app feel |
 
 ---
@@ -167,14 +167,30 @@ Edit the server config (update via the API or directly in `backend/data/servers.
 
 This restarts the server at 4:00 AM Eastern every day.
 
-### GeyserMC (Cross-Platform Play)
+### Java + Bedrock Crossplay (GeyserMC)
 
-GeyserMC lets Bedrock Edition players (mobile, console, Windows 10) join Java servers:
+MCHost Manager can automatically set up crossplay so **Bedrock Edition players** (mobile, console, Windows 10/11) can join your Java server on the **same world** — no separate Bedrock server needed.
 
-1. Your server must be running **Paper or Spigot**
-2. Go to **Plugins** tab → search for `Geyser-Spigot` on Modrinth
-3. Install it, then **restart** the server
-4. Bedrock players connect on port `19132` (UDP)
+**What it installs automatically:**
+- **GeyserMC** — translates the Bedrock protocol so Bedrock clients can connect to a Java server
+- **Floodgate** — lets Bedrock players authenticate with their Xbox account (no Java account required)
+
+**How to enable:**
+1. Create a **Paper** or **Purpur** server (crossplay requires plugin support)
+2. Download and start the server at least once
+3. Go to **Plugins** tab → click the **⚡ Crossplay** tab
+4. Click **Enable Crossplay (GeyserMC + Floodgate)**
+5. Wait for both plugins to download (~20 MB total)
+6. **Restart** the server to activate
+
+**Connecting after setup:**
+
+| Platform | Address | Port |
+|---|---|---|
+| Java Edition | your-server-ip | `25565` (TCP) |
+| Bedrock / mobile / console | your-server-ip | `19132` (UDP) |
+
+> ⚠️ If your server is behind a firewall or router, open **UDP port 19132** in addition to TCP 25565.
 
 ---
 
