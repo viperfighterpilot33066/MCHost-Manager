@@ -186,22 +186,36 @@ router.post('/:id/firewall', async (req, res) => {
     return res.status(400).json({ error: 'Firewall automation is only supported on Windows. Add the rules manually on your OS.' });
   }
 
-  const ruleName = `MCHost-${srv.name.replace(/[^a-zA-Z0-9 _-]/g, '')}`;
+  const safeName = srv.name.replace(/['"\\]/g, '').replace(/[^a-zA-Z0-9 _-]/g, '-').trim();
 
   const addRule = (proto, port) => new Promise((resolve, reject) => {
-    const cmd = `netsh advfirewall firewall add rule name="${ruleName}-${proto}" dir=in action=allow protocol=${proto} localport=${port}`;
-    exec(cmd, (err, _, stderr) => {
-      if (err) reject(new Error(stderr || err.message));
-      else resolve();
-    });
+    const displayName = `MCHost-${safeName}-${proto}`;
+    // Remove any existing rule with this name first (idempotent), then add
+    const psCmd =
+      `Remove-NetFirewallRule -DisplayName '${displayName}' -ErrorAction SilentlyContinue; ` +
+      `New-NetFirewallRule -DisplayName '${displayName}' -Direction Inbound ` +
+      `-Protocol ${proto} -LocalPort ${port} -Action Allow -Profile Any -ErrorAction Stop`;
+    exec(`powershell.exe -NoProfile -NonInteractive -Command "${psCmd}"`,
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error(stderr || stdout || err.message));
+        resolve();
+      });
   });
 
+  const isBedrockServer = srv.type === 'bedrock';
   try {
-    await addRule('TCP', srv.port);
-    if (srv.geyser) await addRule('UDP', srv.bedrockPort || 19132);
-    res.json({ ok: true, message: `Firewall rules added for port ${srv.port}${srv.geyser ? ` and UDP ${srv.bedrockPort || 19132}` : ''}` });
+    if (isBedrockServer) {
+      await addRule('UDP', srv.port);
+    } else {
+      await addRule('TCP', srv.port);
+      if (srv.geyser) await addRule('UDP', srv.bedrockPort || 19132);
+    }
+    const portDesc = isBedrockServer
+      ? `UDP ${srv.port}`
+      : `TCP ${srv.port}${srv.geyser ? ` and UDP ${srv.bedrockPort || 19132}` : ''}`;
+    res.json({ ok: true, message: `Firewall rule added for ${portDesc}` });
   } catch (err) {
-    res.status(500).json({ error: `Firewall rule failed: ${err.message}. Try running MCHost as Administrator.` });
+    res.status(500).json({ error: `Firewall rule failed: ${err.message}. Run MCHost as Administrator (right-click start.bat → Run as administrator).` });
   }
 });
 

@@ -122,10 +122,23 @@ class MinecraftServer extends EventEmitter {
       throw new Error(`Server JAR not found: ${this.jarFile}. Please download it first.`);
     }
 
-    // Accept EULA automatically
-    const eulaPath = path.join(this.dir, 'eula.txt');
-    if (!await fs.pathExists(eulaPath)) {
-      await fs.writeFile(eulaPath, '#By setting eula=true you accept the Minecraft EULA\neula=true\n');
+    // Always write eula=true — overwrite even if Minecraft previously wrote eula=false
+    await fs.writeFile(
+      path.join(this.dir, 'eula.txt'),
+      '#By setting eula=true you accept the Minecraft EULA\neula=true\n'
+    );
+
+    // Sync server-port so Minecraft always listens on the configured port
+    const propsPath = path.join(this.dir, 'server.properties');
+    if (await fs.pathExists(propsPath)) {
+      const existing = await this.getProperties();
+      if (existing['server-port'] !== String(this.port)) {
+        await this.setProperties({ 'server-port': String(this.port) });
+      }
+    } else {
+      // Pre-create minimal properties so Minecraft picks up our port on first run
+      await fs.writeFile(propsPath,
+        `#Minecraft server properties\nserver-port=${this.port}\nonline-mode=true\n`);
     }
 
     const args = [
@@ -146,6 +159,15 @@ class MinecraftServer extends EventEmitter {
 
     if (!await fs.pathExists(exePath)) {
       throw new Error('Bedrock server executable not found. Please download it first.');
+    }
+
+    // Sync server-port for Bedrock as well
+    const propsPath = path.join(this.dir, 'server.properties');
+    if (await fs.pathExists(propsPath)) {
+      const existing = await this.getProperties();
+      if (existing['server-port'] !== String(this.port)) {
+        await this.setProperties({ 'server-port': String(this.port) });
+      }
     }
 
     const env = { ...process.env };

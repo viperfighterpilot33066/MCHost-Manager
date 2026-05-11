@@ -131,6 +131,84 @@ export default function ConnectionInfo({ server }) {
         )}
       </div>
 
+      {/* How to Connect — edition-specific steps */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 14 }}>How to Connect</div>
+
+        {/* Java Edition */}
+        {server.type !== 'bedrock' && (
+          <div style={{ marginBottom: server.geyser ? 16 : 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Java Edition (PC)
+            </div>
+            <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.9 }}>
+              <li>Open <strong style={{ color: 'var(--text)' }}>Minecraft Java Edition</strong></li>
+              <li>Click <strong style={{ color: 'var(--text)' }}>Multiplayer</strong></li>
+              <li>Click <strong style={{ color: 'var(--text)' }}>Add Server</strong></li>
+              <li>In <em>Server Address</em>, paste:
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <code style={{ background: 'var(--surface)', padding: '4px 10px', borderRadius: 6, fontSize: 13, color: 'var(--primary)' }}>
+                    {(localIp || publicIp || 'your-ip')}:{javaPort}
+                  </code>
+                  <CopyButton text={`${localIp || publicIp || 'your-ip'}:${javaPort}`} />
+                </div>
+              </li>
+              <li>Click <strong style={{ color: 'var(--text)' }}>Done</strong> then <strong style={{ color: 'var(--text)' }}>Join Server</strong></li>
+            </ol>
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)', padding: '6px 10px', background: 'var(--surface)', borderRadius: 6 }}>
+              Use the <strong style={{ color: 'var(--text)' }}>Local IP</strong> above if you're on the same WiFi. Use the <strong style={{ color: 'var(--text)' }}>Public IP</strong> for players outside your home (requires port forwarding).
+            </div>
+          </div>
+        )}
+
+        {/* Bedrock Edition — shown for Bedrock servers or when Geyser crossplay is enabled */}
+        {(server.type === 'bedrock' || server.geyser) && (
+          <div>
+            {server.geyser && server.type !== 'bedrock' && (
+              <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '16px 0' }} />
+            )}
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Bedrock Edition (Mobile / Windows 10 / Console)
+            </div>
+            <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.9 }}>
+              <li>Open <strong style={{ color: 'var(--text)' }}>Minecraft</strong> (Bedrock / mobile / console)</li>
+              <li>Tap <strong style={{ color: 'var(--text)' }}>Play</strong> → <strong style={{ color: 'var(--text)' }}>Servers</strong> tab</li>
+              <li>Scroll down and tap <strong style={{ color: 'var(--text)' }}>Add Server</strong></li>
+              <li>Fill in:
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', marginTop: 6, fontSize: 12 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Server Address:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <code style={{ background: 'var(--surface)', padding: '2px 8px', borderRadius: 4, color: 'var(--primary)' }}>
+                      {localIp || publicIp || 'your-ip'}
+                    </code>
+                    <CopyButton text={localIp || publicIp || 'your-ip'} />
+                  </div>
+                  <span style={{ color: 'var(--text-muted)' }}>Port:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <code style={{ background: 'var(--surface)', padding: '2px 8px', borderRadius: 4, color: 'var(--primary)' }}>
+                      {bedrockPort}
+                    </code>
+                    <CopyButton text={String(bedrockPort)} />
+                  </div>
+                </div>
+              </li>
+              <li>Tap <strong style={{ color: 'var(--text)' }}>Save</strong> then tap the server to join</li>
+            </ol>
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)', padding: '6px 10px', background: 'var(--surface)', borderRadius: 6 }}>
+              Bedrock uses <strong style={{ color: 'var(--text)' }}>UDP</strong> — make sure to open the UDP firewall port above, not just TCP.
+              {server.geyser && <span> Crossplay via <strong style={{ color: 'var(--text)' }}>GeyserMC</strong> — Bedrock players join the Java server seamlessly.</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Warn if server is not running */}
+        {server.status !== 'running' && (
+          <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(210,153,34,0.08)', border: '1px solid var(--warning)', borderRadius: 6, fontSize: 12, color: 'var(--warning)' }}>
+            ⚠️ Server is not running — start it first before trying to connect.
+          </div>
+        )}
+      </div>
+
       {/* Port Forwarding Guide */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
         <button
