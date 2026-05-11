@@ -1,9 +1,10 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs-extra');
+const axios = require('axios');
 const router = express.Router();
 const { downloadFile } = require('../services/downloadService');
-const { getProjectVersions } = require('../services/modrinthService');
+const config = require('../config');
 
 const mgr = (req) => req.app.locals.serverManager;
 
@@ -191,26 +192,45 @@ router.post('/:id/setup-crossplay', async (req, res) => {
     await fs.ensureDir(pluginsDir);
 
     const bedrockPort = srv.bedrockPort || 19132;
-    // Use paper loader for both paper and purpur since both are spigot-compatible
-    const modrinthLoader = srv.loader === 'fabric' ? 'fabric' : 'spigot';
+    const modrinthHeaders = { 'User-Agent': 'MCHost-Manager/1.0', timeout: 15000 };
+
+    // Geyser publishes platform-specific JARs (Spigot, Velocity, BungeeCord…) as
+    // separate files within each version — loader filtering returns nothing.
+    // Fetch all versions unfiltered and find the file with "Spigot" in the name.
+    const findSpigotFile = (versions, label) => {
+      for (const ver of versions) {
+        const file = (ver.files || []).find(f => /spigot/i.test(f.filename));
+        if (file) return file;
+      }
+      // Fallback: first file of latest version
+      const fallback = versions[0]?.files?.[0];
+      if (fallback) return fallback;
+      throw new Error(`No ${label} JAR found on Modrinth`);
+    };
 
     // Download GeyserMC
     srv._addLog('[SYSTEM] Crossplay setup: fetching GeyserMC from Modrinth...');
-    const geyserVersions = await getProjectVersions('aXf2OSFU', modrinthLoader, '');
-    if (!geyserVersions.length) throw new Error('No GeyserMC versions found — check your internet connection');
-    const geyser = geyserVersions[0];
-    srv._addLog(`[SYSTEM] Downloading ${geyser.filename}...`);
-    await downloadFile(geyser.downloadUrl, path.join(pluginsDir, geyser.filename));
-    srv._addLog(`[SYSTEM] GeyserMC downloaded: ${geyser.filename}`);
+    const { data: geyserVersions } = await axios.get(
+      `${config.MODRINTH_API}/project/geyser/version`,
+      { headers: modrinthHeaders }
+    );
+    if (!geyserVersions?.length) throw new Error('No GeyserMC versions found — check your internet connection');
+    const geyserFile = findSpigotFile(geyserVersions, 'GeyserMC');
+    srv._addLog(`[SYSTEM] Downloading ${geyserFile.filename}...`);
+    await downloadFile(geyserFile.url, path.join(pluginsDir, geyserFile.filename));
+    srv._addLog(`[SYSTEM] GeyserMC downloaded: ${geyserFile.filename}`);
 
-    // Download Floodgate (lets Bedrock players authenticate with Xbox instead of Java account)
+    // Download Floodgate
     srv._addLog('[SYSTEM] Crossplay setup: fetching Floodgate from Modrinth...');
-    const floodgateVersions = await getProjectVersions('bWrNNfkb', modrinthLoader, '');
-    if (!floodgateVersions.length) throw new Error('No Floodgate versions found');
-    const floodgate = floodgateVersions[0];
-    srv._addLog(`[SYSTEM] Downloading ${floodgate.filename}...`);
-    await downloadFile(floodgate.downloadUrl, path.join(pluginsDir, floodgate.filename));
-    srv._addLog(`[SYSTEM] Floodgate downloaded: ${floodgate.filename}`);
+    const { data: floodgateVersions } = await axios.get(
+      `${config.MODRINTH_API}/project/floodgate/version`,
+      { headers: modrinthHeaders }
+    );
+    if (!floodgateVersions?.length) throw new Error('No Floodgate versions found');
+    const floodgateFile = findSpigotFile(floodgateVersions, 'Floodgate');
+    srv._addLog(`[SYSTEM] Downloading ${floodgateFile.filename}...`);
+    await downloadFile(floodgateFile.url, path.join(pluginsDir, floodgateFile.filename));
+    srv._addLog(`[SYSTEM] Floodgate downloaded: ${floodgateFile.filename}`);
 
     // Write GeyserMC config pre-configured for this server
     const geyserConfigDir = path.join(pluginsDir, 'Geyser-Spigot');
@@ -240,7 +260,7 @@ router.post('/:id/setup-crossplay', async (req, res) => {
     srv._addLog(`[SYSTEM] Crossplay ready! Bedrock/mobile/console players connect on UDP port ${bedrockPort}.`);
     srv._addLog('[SYSTEM] Restart the server to activate GeyserMC.');
 
-    res.json({ ok: true, bedrockPort, geyserFile: geyser.filename, floodgateFile: floodgate.filename });
+    res.json({ ok: true, bedrockPort, geyserFile: geyserFile.filename, floodgateFile: floodgateFile.filename });
   } catch (err) {
     srv._addLog(`[SYSTEM] Crossplay setup failed: ${err.message}`);
     res.status(500).json({ error: err.message });
