@@ -1,0 +1,11 @@
+{
+  "name": "mchost-manager",
+  "version": "1.0.0",
+  "description": "MCHost Manager - Full-stack Minecraft Server Manager",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev"
+  }
+}
