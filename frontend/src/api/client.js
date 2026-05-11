@@ -49,6 +49,7 @@ export const servers = {
   installPlugin: (id, url, filename) => api.post(`/servers/${id}/plugins/install`, { url, filename }).then(r => r.data),
   setupCrossplay: (id) => api.post(`/servers/${id}/setup-crossplay`).then(r => r.data),
   openFirewall: (id) => api.post(`/servers/${id}/firewall`).then(r => r.data),
+  ports: () => api.get('/servers/ports').then(r => r.data),
 };
 
 export const network = {

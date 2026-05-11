@@ -18,6 +18,7 @@ backend/servers/
 backend/backups/
 backend/downloads/
 backend/data/servers.json
+backend/data/.secret
 
 # Logs
 logs/

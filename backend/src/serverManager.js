@@ -24,6 +24,8 @@ class MinecraftServer extends EventEmitter {
     this.scheduledRestarts = cfg.scheduledRestarts || [];
     this.geyser = cfg.geyser || false;
     this.bedrockPort = cfg.bedrockPort || 19132;
+    this.maxPlayers = cfg.maxPlayers || 20;
+    this.onlineMode = cfg.onlineMode !== undefined ? cfg.onlineMode : true;
     this.icon = cfg.icon || null;
     this.description = cfg.description || '';
 
@@ -60,6 +62,8 @@ class MinecraftServer extends EventEmitter {
       scheduledRestarts: this.scheduledRestarts,
       geyser: this.geyser,
       bedrockPort: this.bedrockPort,
+      maxPlayers: this.maxPlayers,
+      onlineMode: this.onlineMode,
       description: this.description,
       status: this.status,
       players: this.players,
@@ -87,6 +91,8 @@ class MinecraftServer extends EventEmitter {
       scheduledRestarts: this.scheduledRestarts,
       geyser: this.geyser,
       bedrockPort: this.bedrockPort,
+      maxPlayers: this.maxPlayers,
+      onlineMode: this.onlineMode,
       description: this.description,
     };
   }
@@ -136,9 +142,9 @@ class MinecraftServer extends EventEmitter {
         await this.setProperties({ 'server-port': String(this.port) });
       }
     } else {
-      // Pre-create minimal properties so Minecraft picks up our port on first run
+      // Pre-create minimal properties so Minecraft picks up our settings on first run
       await fs.writeFile(propsPath,
-        `#Minecraft server properties\nserver-port=${this.port}\nonline-mode=true\n`);
+        `#Minecraft server properties\nserver-port=${this.port}\nonline-mode=${this.onlineMode ? 'true' : 'false'}\nmax-players=${this.maxPlayers}\n`);
     }
 
     const args = [
@@ -518,9 +524,26 @@ class ServerManager {
     this.wsClients.forEach(clients => clients.delete(ws));
   }
 
+  _usedPorts(excludeId = null) {
+    return [...this.servers.values()]
+      .filter(s => s.id !== excludeId)
+      .map(s => s.port);
+  }
+
+  getNextFreePort(start = 25565) {
+    const used = this._usedPorts();
+    let port = start;
+    while (used.includes(port) && port <= 65534) port++;
+    return port <= 65534 ? port : null;
+  }
+
   async createServer(cfg) {
+    const port = parseInt(cfg.port) || 25565;
+    if (port < 1025 || port > 65534) throw new Error('Port must be between 1025 and 65534');
+    if (this._usedPorts().includes(port)) throw new Error(`Port ${port} is already in use by another server. Try port ${this.getNextFreePort(port + 1) || port + 1}.`);
+
     const id = uuidv4();
-    const srv = new MinecraftServer({ ...cfg, id });
+    const srv = new MinecraftServer({ ...cfg, port, id });
     await fs.ensureDir(srv.dir);
     this.servers.set(id, srv);
     this._attachEvents(srv);
@@ -531,7 +554,12 @@ class ServerManager {
   async updateServer(id, updates) {
     const srv = this.servers.get(id);
     if (!srv) throw new Error('Server not found');
-    const allowed = ['name', 'maxRam', 'minRam', 'javaPath', 'javaArgs', 'autoRestart', 'autoRestartDelay', 'scheduledRestarts', 'geyser', 'bedrockPort', 'description', 'port'];
+    if ('port' in updates) {
+      const p = parseInt(updates.port);
+      if (p < 1025 || p > 65534) throw new Error('Port must be between 1025 and 65534');
+      if (this._usedPorts(id).includes(p)) throw new Error(`Port ${p} is already in use by another server`);
+    }
+    const allowed = ['name', 'maxRam', 'minRam', 'javaPath', 'javaArgs', 'autoRestart', 'autoRestartDelay', 'scheduledRestarts', 'geyser', 'bedrockPort', 'maxPlayers', 'onlineMode', 'description', 'port'];
     allowed.forEach(k => { if (k in updates) srv[k] = updates[k]; });
     await this._saveServers();
     return srv;

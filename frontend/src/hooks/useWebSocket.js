@@ -1,7 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react';
 import useStore from '../store/useStore';
 
-const WS_URL = `ws://${window.location.hostname}:3001/ws`;
+function getWsUrl() {
+  const token = localStorage.getItem('mchost_token');
+  const base = `ws://${window.location.hostname}:3001/ws`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+}
 
 let globalWs = null;
 let reconnectTimer = null;
@@ -28,7 +32,7 @@ function connectGlobal(onServerListUpdate) {
   if (onServerListUpdate) serverListCallback = onServerListUpdate;
   if (globalWs && globalWs.readyState < 2) return;
 
-  globalWs = new WebSocket(WS_URL);
+  globalWs = new WebSocket(getWsUrl());
 
   globalWs.onopen = () => {
     console.log('WS connected');

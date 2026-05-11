@@ -2,9 +2,28 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mchost-manager-secret-' + Math.random().toString(36);
+// Load persistent secret so tokens survive backend restarts
+const SECRET_PATH = path.join(__dirname, '../../data/.secret');
+let JWT_SECRET;
+if (process.env.JWT_SECRET) {
+  JWT_SECRET = process.env.JWT_SECRET;
+} else {
+  try {
+    JWT_SECRET = fs.readFileSync(SECRET_PATH, 'utf8').trim();
+  } catch {
+    JWT_SECRET = crypto.randomBytes(32).toString('hex');
+    try {
+      fs.mkdirSync(path.dirname(SECRET_PATH), { recursive: true });
+      fs.writeFileSync(SECRET_PATH, JWT_SECRET, { mode: 0o600 });
+    } catch (_) {}
+  }
+}
+
 const PASSWORD_HASH = process.env.MCHOST_PASSWORD
   ? bcrypt.hashSync(process.env.MCHOST_PASSWORD, 10)
   : null;
@@ -38,7 +57,6 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// Export middleware for use in index.js
 function bearerAuth(req, res, next) {
   if (!PASSWORD_HASH) return next();
   const header = req.headers.authorization;
@@ -53,4 +71,4 @@ function bearerAuth(req, res, next) {
   }
 }
 
-module.exports = { router, bearerAuth, JWT_SECRET };
+module.exports = { router, bearerAuth, JWT_SECRET, PASSWORD_HASH };

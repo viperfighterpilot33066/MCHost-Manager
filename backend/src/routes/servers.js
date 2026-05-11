@@ -3,11 +3,23 @@ const path = require('path');
 const fs = require('fs-extra');
 const axios = require('axios');
 const { exec } = require('child_process');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { downloadFile } = require('../services/downloadService');
 const config = require('../config');
 
 const mgr = (req) => req.app.locals.serverManager;
+
+const actionLimiter = rateLimit({
+  windowMs: 60_000, max: 30,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many server actions. Please slow down.' },
+});
+const cmdLimiter = rateLimit({
+  windowMs: 10_000, max: 60,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many commands. Please slow down.' },
+});
 
 // List all servers
 router.get('/', (req, res) => {
@@ -22,6 +34,14 @@ router.post('/', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// Port info — used ports + suggested next free port (must be before /:id)
+router.get('/ports', (req, res) => {
+  const m = mgr(req);
+  const used = [...m.servers.values()].map(s => s.port).sort((a, b) => a - b);
+  const suggested = m.getNextFreePort();
+  res.json({ used, suggested });
 });
 
 // Get server
@@ -52,7 +72,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Control actions
-router.post('/:id/start', async (req, res) => {
+router.post('/:id/start', actionLimiter, async (req, res) => {
   const srv = mgr(req).getServer(req.params.id);
   if (!srv) return res.status(404).json({ error: 'Server not found' });
   try {
@@ -63,7 +83,7 @@ router.post('/:id/start', async (req, res) => {
   }
 });
 
-router.post('/:id/stop', async (req, res) => {
+router.post('/:id/stop', actionLimiter, async (req, res) => {
   const srv = mgr(req).getServer(req.params.id);
   if (!srv) return res.status(404).json({ error: 'Server not found' });
   try {
@@ -85,7 +105,7 @@ router.post('/:id/restart', async (req, res) => {
   }
 });
 
-router.post('/:id/kill', async (req, res) => {
+router.post('/:id/kill', actionLimiter, async (req, res) => {
   const srv = mgr(req).getServer(req.params.id);
   if (!srv) return res.status(404).json({ error: 'Server not found' });
   try {
@@ -97,7 +117,7 @@ router.post('/:id/kill', async (req, res) => {
 });
 
 // Send console command
-router.post('/:id/command', (req, res) => {
+router.post('/:id/command', cmdLimiter, (req, res) => {
   const srv = mgr(req).getServer(req.params.id);
   if (!srv) return res.status(404).json({ error: 'Server not found' });
   const { command } = req.body;

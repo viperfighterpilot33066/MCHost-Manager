@@ -1,11 +1,11 @@
 const express = require('express');
 const { WebSocketServer } = require('ws');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const http = require('http');
-const path = require('path');
 const { ServerManager } = require('./serverManager');
 const { initScheduler } = require('./services/schedulerService');
-const { router: authRouter, bearerAuth } = require('./routes/auth');
+const { router: authRouter, bearerAuth, JWT_SECRET, PASSWORD_HASH } = require('./routes/auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,9 +33,19 @@ app.use('/api/network', require('./routes/network'));
 // Health check
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: Date.now() }));
 
-// WebSocket
+// WebSocket — verify JWT token from query param if auth is enabled
 wss.on('connection', (ws, req) => {
-  console.log(`WS connected: ${req.socket.remoteAddress}`);
+  if (PASSWORD_HASH) {
+    const token = new URL(req.url || '/', 'http://x').searchParams.get('token');
+    let valid = false;
+    if (token) {
+      try { jwt.verify(token, JWT_SECRET); valid = true; } catch (_) {}
+    }
+    if (!valid) {
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+  }
 
   ws.on('message', (raw) => {
     try {
@@ -68,9 +78,6 @@ wss.on('connection', (ws, req) => {
   // Send initial server list
   ws.send(JSON.stringify({ type: 'server_list', data: serverManager.getAllServers() }));
 });
-
-// Broadcast server list on any status change (for dashboard)
-serverManager.on = serverManager.on || (() => {});
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, async () => {

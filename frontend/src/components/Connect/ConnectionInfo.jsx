@@ -141,6 +141,12 @@ export default function ConnectionInfo({ server }) {
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Java Edition (PC)
             </div>
+            {server.version && (
+              <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.25)', borderRadius: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                This server runs <strong style={{ color: 'var(--primary)' }}>Minecraft {server.version}</strong>.
+                Your Minecraft launcher profile must also be set to version <strong style={{ color: 'var(--primary)' }}>{server.version}</strong> — go to <em>Installations</em> → create a profile with that version.
+              </div>
+            )}
             <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.9 }}>
               <li>Open <strong style={{ color: 'var(--text)' }}>Minecraft Java Edition</strong></li>
               <li>Click <strong style={{ color: 'var(--text)' }}>Multiplayer</strong></li>

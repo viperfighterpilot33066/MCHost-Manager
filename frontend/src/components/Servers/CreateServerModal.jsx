@@ -32,8 +32,11 @@ export default function CreateServerModal({ onClose }) {
     autoRestart: false,
     autoRestartDelay: '10',
     javaArgs: '',
+    maxPlayers: '20',
+    onlineMode: true,
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [usedPorts, setUsedPorts] = useState([]);
 
   const [versionList, setVersionList] = useState([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
@@ -41,6 +44,14 @@ export default function CreateServerModal({ onClose }) {
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   const selectedLoader = LOADERS.find(l => l.id === form.loader);
+
+  // Auto-suggest next free port on open
+  useEffect(() => {
+    serversApi.ports().then(({ used, suggested }) => {
+      setUsedPorts(used || []);
+      if (suggested) set('port', String(suggested));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (step !== 2) return;
@@ -87,6 +98,7 @@ export default function CreateServerModal({ onClose }) {
         port: parseInt(form.port) || 25565,
         bedrockPort: parseInt(form.bedrockPort) || 19132,
         autoRestartDelay: parseInt(form.autoRestartDelay) || 10,
+        maxPlayers: parseInt(form.maxPlayers) || 20,
         javaArgs: form.javaArgs.trim(),
       };
       const srv = await serversApi.create(payload);
@@ -159,8 +171,13 @@ export default function CreateServerModal({ onClose }) {
                     type="number"
                     value={form.port}
                     onChange={e => set('port', e.target.value)}
-                    min="1" max="65535"
+                    min="1025" max="65534"
                   />
+                  {usedPorts.length > 0 && (
+                    <div className="form-hint">
+                      In use: {usedPorts.slice(0, 6).join(', ')}{usedPorts.length > 6 ? ` +${usedPorts.length - 6} more` : ''}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Max RAM</label>
@@ -178,16 +195,40 @@ export default function CreateServerModal({ onClose }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Auto Restart on Crash</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                    <label className="toggle">
-                      <input type="checkbox" checked={form.autoRestart} onChange={e => set('autoRestart', e.target.checked)} />
-                      <span className="toggle-slider" />
-                    </label>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                      {form.autoRestart ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
+                  <label className="form-label">Max Players</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={form.maxPlayers}
+                    onChange={e => set('maxPlayers', e.target.value)}
+                    min="1" max="1000"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Online Mode (Requires Mojang/Microsoft account)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                  <label className="toggle">
+                    <input type="checkbox" checked={form.onlineMode} onChange={e => set('onlineMode', e.target.checked)} />
+                    <span className="toggle-slider" />
+                  </label>
+                  <span style={{ fontSize: 12, color: form.onlineMode ? 'var(--success)' : 'var(--warning)' }}>
+                    {form.onlineMode ? 'ON — only valid Minecraft accounts can join' : 'OFF — cracked clients can join (insecure)'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Auto Restart on Crash</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                  <label className="toggle">
+                    <input type="checkbox" checked={form.autoRestart} onChange={e => set('autoRestart', e.target.checked)} />
+                    <span className="toggle-slider" />
+                  </label>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {form.autoRestart ? 'Enabled' : 'Disabled'}
+                  </span>
                 </div>
               </div>
 
