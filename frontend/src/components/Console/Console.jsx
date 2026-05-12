@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Terminal as TerminalIcon, Trash2, HelpCircle, X } from 'lucide-react';
+import { Terminal as TerminalIcon, Trash2, HelpCircle, X, ChevronUp } from 'lucide-react';
 
 const COMMAND_HELP = [
   {
@@ -9,47 +9,104 @@ const COMMAND_HELP = [
       { cmd: 'deop <player>', desc: 'Remove operator status' },
       { cmd: 'kick <player> [reason]', desc: 'Kick a player' },
       { cmd: 'ban <player> [reason]', desc: 'Ban a player' },
-      { cmd: 'pardon <player>', desc: 'Unban a player' },
       { cmd: 'ban-ip <ip>', desc: 'Ban an IP address' },
+      { cmd: 'pardon <player>', desc: 'Unban a player' },
+      { cmd: 'pardon-ip <ip>', desc: 'Unban an IP address' },
+      { cmd: 'kill <player>', desc: 'Kill a player (use @a for all)' },
       { cmd: 'whitelist add <player>', desc: 'Add to whitelist' },
       { cmd: 'whitelist remove <player>', desc: 'Remove from whitelist' },
       { cmd: 'whitelist list', desc: 'Show whitelisted players' },
-      { cmd: 'whitelist on / off', desc: 'Enable or disable whitelist' },
+      { cmd: 'whitelist on', desc: 'Enable whitelist' },
+      { cmd: 'whitelist off', desc: 'Disable whitelist' },
     ],
   },
   {
     category: 'World & Gameplay',
     commands: [
-      { cmd: 'time set day', desc: 'Set time to day' },
-      { cmd: 'time set night', desc: 'Set time to night' },
+      { cmd: 'time set day', desc: 'Set time to day (1000)' },
+      { cmd: 'time set night', desc: 'Set time to night (13000)' },
+      { cmd: 'time set noon', desc: 'Set time to noon (6000)' },
+      { cmd: 'time set midnight', desc: 'Set time to midnight (18000)' },
+      { cmd: 'time set <ticks>', desc: 'Set exact time value' },
       { cmd: 'weather clear', desc: 'Clear weather' },
       { cmd: 'weather rain', desc: 'Start rain' },
+      { cmd: 'weather thunder', desc: 'Start thunderstorm' },
+      { cmd: 'gamemode survival <player>', desc: 'Set survival mode' },
+      { cmd: 'gamemode creative <player>', desc: 'Set creative mode' },
+      { cmd: 'gamemode adventure <player>', desc: 'Set adventure mode' },
+      { cmd: 'gamemode spectator <player>', desc: 'Set spectator mode' },
+      { cmd: 'difficulty peaceful', desc: 'Set difficulty to peaceful' },
+      { cmd: 'difficulty easy', desc: 'Set difficulty to easy' },
+      { cmd: 'difficulty normal', desc: 'Set difficulty to normal' },
+      { cmd: 'difficulty hard', desc: 'Set difficulty to hard' },
       { cmd: 'tp <player1> <player2>', desc: 'Teleport player to player' },
+      { cmd: 'tp <player> <x> <y> <z>', desc: 'Teleport to coordinates' },
       { cmd: 'give <player> <item> [count]', desc: 'Give item to player' },
-      { cmd: 'gamemode <mode> [player]', desc: 'survival / creative / adventure / spectator' },
-      { cmd: 'difficulty <level>', desc: 'peaceful / easy / normal / hard' },
-      { cmd: 'gamerule <rule> <value>', desc: 'Change a game rule' },
-      { cmd: 'fill <x1 y1 z1> <x2 y2 z2> <block>', desc: 'Fill area with blocks' },
+      { cmd: 'clear <player>', desc: "Clear player's inventory" },
+      { cmd: 'xp add <player> <amount> levels', desc: 'Add XP levels' },
+      { cmd: 'xp set <player> <amount> levels', desc: 'Set XP levels' },
+      { cmd: 'effect give <player> <effect> [seconds] [amplifier]', desc: 'Apply a potion effect' },
+      { cmd: 'effect clear <player>', desc: 'Remove all effects from player' },
+      { cmd: 'enchant <player> <enchantment> [level]', desc: 'Enchant held item' },
+      { cmd: 'summon <entity> [x] [y] [z]', desc: 'Summon an entity' },
+      { cmd: 'fill <x1> <y1> <z1> <x2> <y2> <z2> <block>', desc: 'Fill area with blocks' },
+      { cmd: 'setblock <x> <y> <z> <block>', desc: 'Place a block' },
+      { cmd: 'clone <x1> <y1> <z1> <x2> <y2> <z2> <dx> <dy> <dz>', desc: 'Clone region' },
+    ],
+  },
+  {
+    category: 'Game Rules',
+    commands: [
+      { cmd: 'gamerule keepInventory true', desc: 'Keep inventory on death' },
+      { cmd: 'gamerule keepInventory false', desc: 'Drop inventory on death' },
+      { cmd: 'gamerule mobGriefing false', desc: 'Prevent mob block damage' },
+      { cmd: 'gamerule mobGriefing true', desc: 'Allow mob block damage' },
+      { cmd: 'gamerule doDaylightCycle false', desc: 'Freeze time' },
+      { cmd: 'gamerule doDaylightCycle true', desc: 'Resume day/night cycle' },
+      { cmd: 'gamerule doFireTick false', desc: 'Disable fire spread' },
+      { cmd: 'gamerule doFireTick true', desc: 'Enable fire spread' },
+      { cmd: 'gamerule doMobSpawning false', desc: 'Disable mob spawning' },
+      { cmd: 'gamerule doMobSpawning true', desc: 'Enable mob spawning' },
+      { cmd: 'gamerule pvp false', desc: 'Disable PvP (Paper only)' },
+      { cmd: 'gamerule pvp true', desc: 'Enable PvP (Paper only)' },
+      { cmd: 'gamerule <rule> <value>', desc: 'Set any game rule' },
+    ],
+  },
+  {
+    category: 'Messaging & Display',
+    commands: [
+      { cmd: 'say <message>', desc: 'Broadcast to all players' },
+      { cmd: 'tell <player> <message>', desc: 'Private message a player' },
+      { cmd: 'msg <player> <message>', desc: 'Alias for tell' },
+      { cmd: 'title <player> title {"text":"Hello"}', desc: 'Show title on screen' },
+      { cmd: 'title <player> subtitle {"text":"Sub"}', desc: 'Show subtitle' },
+      { cmd: 'title <player> clear', desc: 'Clear title display' },
+      { cmd: 'tellraw @a {"text":"msg","color":"gold"}', desc: 'JSON-formatted message to all' },
     ],
   },
   {
     category: 'Server Management',
     commands: [
       { cmd: 'list', desc: 'Show online players' },
-      { cmd: 'say <message>', desc: 'Broadcast message to all' },
       { cmd: 'save-all', desc: 'Force save the world' },
-      { cmd: 'save-off / save-on', desc: 'Disable / enable auto-save' },
+      { cmd: 'save-off', desc: 'Disable auto-save' },
+      { cmd: 'save-on', desc: 'Enable auto-save' },
       { cmd: 'reload', desc: 'Reload datapacks' },
       { cmd: 'stop', desc: 'Stop the server gracefully' },
       { cmd: 'seed', desc: 'Show world seed' },
-      { cmd: 'defaultgamemode <mode>', desc: 'Set default gamemode for new players' },
-      { cmd: 'scoreboard', desc: 'Manage scoreboards' },
+      { cmd: 'defaultgamemode survival', desc: 'Default mode for new players' },
+      { cmd: 'forceload add <x> <z>', desc: 'Force-load a chunk' },
+      { cmd: 'forceload remove <x> <z>', desc: 'Unforce-load a chunk' },
+      { cmd: 'data get entity <player>', desc: 'Get entity NBT data' },
+      { cmd: 'scoreboard objectives add <name> dummy', desc: 'Create scoreboard objective' },
+      { cmd: 'scoreboard players set <player> <obj> <val>', desc: 'Set scoreboard value' },
+      { cmd: 'execute as <player> run <command>', desc: 'Run command as a player' },
     ],
   },
   {
     category: 'Paper / Performance',
     commands: [
-      { cmd: 'tps', desc: 'Show server TPS (Paper only)' },
+      { cmd: 'tps', desc: 'Show server TPS (Paper)' },
       { cmd: 'gc', desc: 'Run garbage collection (Paper)' },
       { cmd: 'timings report', desc: 'Generate timing report (Paper)' },
       { cmd: 'chunky start', desc: 'Pre-generate chunks (Chunky plugin)' },
@@ -83,6 +140,8 @@ export default function Console({ serverId, ws, isRunning }) {
   const [histIdx, setHistIdx] = useState(-1);
   const inputRef = useRef(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCmdPicker, setShowCmdPicker] = useState(false);
+
   // Initialize xterm — re-runs when serverId changes so switching servers gets a fresh terminal
   useEffect(() => {
     if (!containerRef.current) return;
@@ -197,7 +256,6 @@ export default function Console({ serverId, ws, isRunning }) {
   function writeEntry(term, entry) {
     if (!entry) return;
     const line = entry.line || '';
-    // Minecraft uses § color codes — convert to ANSI
     const colored = mcColorToAnsi(line);
     term.writeln(colored);
   }
@@ -214,6 +272,13 @@ export default function Console({ serverId, ws, isRunning }) {
     return text.replace(/§[0-9a-fklmnor]/gi, m => map[m] || '');
   }
 
+  const fillCommand = (cmd) => {
+    setCommand(cmd + ' ');
+    setShowCmdPicker(false);
+    setShowHelp(false);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   const sendCommand = () => {
     const cmd = command.trim();
     if (!cmd) return;
@@ -226,6 +291,9 @@ export default function Console({ serverId, ws, isRunning }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       sendCommand();
+    } else if (e.key === 'Escape') {
+      setShowCmdPicker(false);
+      setShowHelp(false);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       const idx = Math.min(histIdx + 1, cmdHistory.length - 1);
@@ -254,7 +322,7 @@ export default function Console({ serverId, ws, isRunning }) {
         <div style={{ display: 'flex', gap: 4 }}>
           <button
             className={`btn btn-icon btn-sm ${showHelp ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setShowHelp(h => !h)}
+            onClick={() => { setShowHelp(h => !h); setShowCmdPicker(false); }}
             title="Command reference"
           >
             {showHelp ? <X size={12} /> : <HelpCircle size={12} />}
@@ -265,7 +333,7 @@ export default function Console({ serverId, ws, isRunning }) {
         </div>
       </div>
 
-      {/* Command help panel */}
+      {/* Command help panel (top overlay) */}
       {showHelp && (
         <div style={{ overflowY: 'auto', maxHeight: 240, background: '#0d1117', borderBottom: '1px solid var(--border)', padding: '10px 12px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -277,7 +345,7 @@ export default function Console({ serverId, ws, isRunning }) {
                 {group.commands.map(({ cmd, desc }) => (
                   <div
                     key={cmd}
-                    onClick={() => { setCommand(cmd.split(' ')[0] + ' '); inputRef.current?.focus(); }}
+                    onClick={() => fillCommand(cmd)}
                     style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0', cursor: 'pointer', borderRadius: 3 }}
                     title="Click to prefill"
                   >
@@ -296,27 +364,76 @@ export default function Console({ serverId, ws, isRunning }) {
 
       <div className="console-output" ref={containerRef} />
 
-      <div className="console-input-row">
-        <span className="console-prompt">{'>'}</span>
-        <input
-          ref={inputRef}
-          className="console-input-field"
-          value={command}
-          onChange={e => setCommand(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={isRunning ? 'Send command... (? for help)' : 'Server is not running'}
-          disabled={!isRunning}
-          spellCheck={false}
-          autoComplete="off"
-        />
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={sendCommand}
-          disabled={!isRunning || !command.trim()}
-          style={{ flexShrink: 0 }}
-        >
-          Send
-        </button>
+      {/* Command picker dropdown — anchored above the input row */}
+      <div style={{ position: 'relative' }}>
+        {showCmdPicker && (
+          <div style={{
+            position: 'absolute',
+            bottom: '100%',
+            right: 0,
+            width: 360,
+            maxHeight: 280,
+            overflowY: 'auto',
+            background: '#0d1117',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            zIndex: 100,
+            padding: '8px 0',
+            boxShadow: '0 -4px 16px rgba(0,0,0,0.5)',
+          }}>
+            {COMMAND_HELP.map(group => (
+              <div key={group.category}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)', padding: '4px 12px 2px', textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.8 }}>
+                  {group.category}
+                </div>
+                {group.commands.map(({ cmd, desc }) => (
+                  <div
+                    key={cmd}
+                    onClick={() => fillCommand(cmd)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#161b22'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <code style={{ fontSize: 11, color: 'var(--success)', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 0 }}>{cmd}</code>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="console-input-row">
+          <span className="console-prompt">{'>'}</span>
+          <input
+            ref={inputRef}
+            className="console-input-field"
+            value={command}
+            onChange={e => setCommand(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isRunning ? 'Send command...' : 'Server is not running'}
+            disabled={!isRunning}
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <button
+            className={`btn btn-sm ${showCmdPicker ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => { setShowCmdPicker(p => !p); setShowHelp(false); }}
+            disabled={!isRunning}
+            title="Browse commands"
+            style={{ flexShrink: 0, gap: 4 }}
+          >
+            Commands <ChevronUp size={11} style={{ transform: showCmdPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={sendCommand}
+            disabled={!isRunning || !command.trim()}
+            style={{ flexShrink: 0 }}
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
