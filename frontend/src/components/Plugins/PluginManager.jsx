@@ -99,15 +99,27 @@ function CrossplayTab({ server }) {
       {/* Setup / already done */}
       {isJavaPlugin && (
         alreadyEnabled || result ? (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(63,185,80,0.08)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 8, padding: 14, fontSize: 13 }}>
-            <CheckCircle size={16} style={{ color: 'var(--success)', flexShrink: 0, marginTop: 1 }} />
-            <div>
-              <strong style={{ color: 'var(--success)' }}>Crossplay is enabled.</strong>
-              <div style={{ color: 'var(--text-muted)', marginTop: 4 }}>
-                {result
-                  ? `Installed ${result.geyserFile} and ${result.floodgateFile}. `
-                  : ''}
-                Restart the server to activate GeyserMC. Bedrock players connect on UDP port {server.bedrockPort || 19132}.
+          <div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(63,185,80,0.08)', border: '1px solid rgba(63,185,80,0.3)', borderRadius: 8, padding: 14, fontSize: 13 }}>
+              <CheckCircle size={16} style={{ color: 'var(--success)', flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong style={{ color: 'var(--success)' }}>Crossplay is enabled.</strong>
+                <div style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+                  {result
+                    ? `Installed ${result.geyserFile} and ${result.floodgateFile}. `
+                    : ''}
+                  Restart the server to activate GeyserMC. Bedrock players connect on UDP port {server.bedrockPort || 19132}.
+                </div>
+                {result?.firewallOpened && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--success)' }}>
+                    ✓ Firewall rules opened automatically: TCP {server.port} (Java) + UDP {result.bedrockPort} (Bedrock)
+                  </div>
+                )}
+                {result?.firewallError && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--warning)' }}>
+                    ⚠ Firewall could not be opened automatically. Right-click start.bat → Run as administrator, then go to the Connect tab and click "Open Firewall Ports".
+                  </div>
+                )}
               </div>
             </div>
           </div>

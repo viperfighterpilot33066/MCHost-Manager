@@ -10,6 +10,22 @@ const config = require('../config');
 
 const mgr = (req) => req.app.locals.serverManager;
 
+// Opens one Windows Firewall inbound rule — idempotent (removes existing first)
+function addFirewallRule(safeName, proto, port) {
+  return new Promise((resolve, reject) => {
+    const displayName = `MCHost-${safeName}-${proto}`;
+    const psCmd =
+      `Remove-NetFirewallRule -DisplayName '${displayName}' -ErrorAction SilentlyContinue; ` +
+      `New-NetFirewallRule -DisplayName '${displayName}' -Direction Inbound ` +
+      `-Protocol ${proto} -LocalPort ${port} -Action Allow -Profile Any -ErrorAction Stop`;
+    exec(`powershell.exe -NoProfile -NonInteractive -Command "${psCmd}"`,
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error(stderr || stdout || err.message));
+        resolve();
+      });
+  });
+}
+
 const actionLimiter = rateLimit({
   windowMs: 60_000, max: 30,
   standardHeaders: true, legacyHeaders: false,
@@ -208,27 +224,13 @@ router.post('/:id/firewall', async (req, res) => {
 
   const safeName = srv.name.replace(/['"\\]/g, '').replace(/[^a-zA-Z0-9 _-]/g, '-').trim();
 
-  const addRule = (proto, port) => new Promise((resolve, reject) => {
-    const displayName = `MCHost-${safeName}-${proto}`;
-    // Remove any existing rule with this name first (idempotent), then add
-    const psCmd =
-      `Remove-NetFirewallRule -DisplayName '${displayName}' -ErrorAction SilentlyContinue; ` +
-      `New-NetFirewallRule -DisplayName '${displayName}' -Direction Inbound ` +
-      `-Protocol ${proto} -LocalPort ${port} -Action Allow -Profile Any -ErrorAction Stop`;
-    exec(`powershell.exe -NoProfile -NonInteractive -Command "${psCmd}"`,
-      (err, stdout, stderr) => {
-        if (err) return reject(new Error(stderr || stdout || err.message));
-        resolve();
-      });
-  });
-
   const isBedrockServer = srv.type === 'bedrock';
   try {
     if (isBedrockServer) {
-      await addRule('UDP', srv.port);
+      await addFirewallRule(safeName, 'UDP', srv.port);
     } else {
-      await addRule('TCP', srv.port);
-      if (srv.geyser) await addRule('UDP', srv.bedrockPort || 19132);
+      await addFirewallRule(safeName, 'TCP', srv.port);
+      if (srv.geyser) await addFirewallRule(safeName, 'UDP', srv.bedrockPort || 19132);
     }
     const portDesc = isBedrockServer
       ? `UDP ${srv.port}`
@@ -326,7 +328,24 @@ router.post('/:id/setup-crossplay', async (req, res) => {
     srv._addLog(`[SYSTEM] Crossplay ready! Bedrock/mobile/console players connect on UDP port ${bedrockPort}.`);
     srv._addLog('[SYSTEM] Restart the server to activate GeyserMC.');
 
-    res.json({ ok: true, bedrockPort, geyserFile: geyserFile.filename, floodgateFile: floodgateFile.filename });
+    // Auto-open firewall — best-effort, don't abort setup if this fails (e.g. not running as admin)
+    let firewallOpened = false;
+    let firewallError = null;
+    if (process.platform === 'win32') {
+      const safeName = srv.name.replace(/['"\\]/g, '').replace(/[^a-zA-Z0-9 _-]/g, '-').trim();
+      try {
+        await addFirewallRule(safeName, 'TCP', srv.port);
+        await addFirewallRule(safeName, 'UDP', bedrockPort);
+        firewallOpened = true;
+        srv._addLog(`[SYSTEM] Firewall rules opened: TCP ${srv.port} (Java) + UDP ${bedrockPort} (Bedrock).`);
+      } catch (fwErr) {
+        firewallError = fwErr.message;
+        srv._addLog(`[SYSTEM] Firewall auto-open failed: ${fwErr.message}`);
+        srv._addLog('[SYSTEM] Fix: right-click start.bat → Run as administrator, then Connect tab → Open Firewall Ports.');
+      }
+    }
+
+    res.json({ ok: true, bedrockPort, geyserFile: geyserFile.filename, floodgateFile: floodgateFile.filename, firewallOpened, firewallError });
   } catch (err) {
     srv._addLog(`[SYSTEM] Crossplay setup failed: ${err.message}`);
     res.status(500).json({ error: err.message });
